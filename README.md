@@ -52,3 +52,6 @@ and the litteral translation of "meme" being 짤.
 ## Team
 - Michael Dobeson
 - Elias Baumgartner
+
+## License
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
