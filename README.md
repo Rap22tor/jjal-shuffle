@@ -11,6 +11,37 @@ This serves as the base of our application, but since this is a popular project 
 - Image-to-ASCII Art
 - and more...
 
+## Development setup
+Requires Python 3.10 or newer.
+
+Clone the repository and create a virtual environment inside it:
+
+```bash
+git clone <repository-url>
+cd jjal-shuffle
+python -m venv .venv
+```
+
+Activate it:
+
+```bash
+# Windows (PowerShell)
+.venv\Scripts\Activate.ps1
+
+# Windows (cmd)
+.venv\Scripts\activate.bat
+
+# Linux / macOS / Git Bash
+source .venv/bin/activate      # Git Bash on Windows: source .venv/Scripts/activate
+```
+
+Install the dependencies and run the tests:
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
+
 ## Name
 Since the goal of this project is to implement an open source application while still having fun, we thought the name
 of should reflect this.
