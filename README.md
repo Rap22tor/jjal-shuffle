@@ -53,5 +53,9 @@ and the litteral translation of "meme" being 짤.
 - Michael Dobeson
 - Elias Baumgartner
 
+## Contributing
+This is a university project created for the Open Source Software course @ SeoulTech and is not intended for further
+use or development. As such, no public contributions (pull requests, issues, etc.) will be accepted.
+
 ## License
 This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
