@@ -6,6 +6,7 @@ from PIL import Image
 
 from jjal_shuffle.images import (
     array_as_image,
+    grayscale_image,
     image_as_array,
     load_image,
     resize_image,
@@ -61,6 +62,18 @@ def test_resize_real_image(path):
     assert resize_image(image, (width // 2, height // 2)).size == (width // 2, height // 2)
     assert resize_image(image, (100, 50)).size == (100, 50)
     assert image_as_array(resize_image(image, (100, 50))).shape == (50, 100, 3)
+
+@real_images
+def test_grayscale_real_image(path):
+    image = load_image(path)
+    gray = grayscale_image(image)
+    assert gray.mode == "L"
+    assert gray.size == image.size
+    # Each pixel lies between the darkest and brightest channel
+    rgb = image_as_array(image).astype(int)
+    gray_array = np.array(gray).astype(int)
+    assert np.all(gray_array >= rgb.min(axis=2) - 1)
+    assert np.all(gray_array <= rgb.max(axis=2) + 1)
 
 @real_images
 def test_save_real_image_png_round_trip(path, tmp_path):

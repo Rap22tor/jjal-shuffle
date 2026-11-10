@@ -4,6 +4,7 @@ from PIL import Image
 
 from jjal_shuffle.images import (
     array_as_image,
+    grayscale_image,
     image_as_array,
     load_image,
     resize_image,
@@ -48,6 +49,36 @@ def test_resize_image_down(gradient_image_path):
 def test_resize_image_up_uses_width_then_height(gradient_image_path):
     image = resize_image(load_image(gradient_image_path), (32, 24))
     assert image.size == (32, 24)
+
+# Grayscale
+
+def test_grayscale_image_mode_and_size(gradient_image_path):
+    image = load_image(gradient_image_path)
+    gray = grayscale_image(image)
+    assert gray.mode == "L"
+    assert gray.size == image.size
+
+def test_grayscale_image_uses_luminance_weights(solid_image_path):
+    # 0.299 * 200 + 0.587 * 100 + 0.114 * 50 = 124.2
+    gray = grayscale_image(load_image(solid_image_path))
+    assert gray.getpixel((0, 0)) == pytest.approx(124.2, abs=1)
+
+def test_grayscale_image_keeps_extremes():
+    black = grayscale_image(Image.new("RGB", (2, 2), (0, 0, 0)))
+    white = grayscale_image(Image.new("RGB", (2, 2), (255, 255, 255)))
+    assert black.getpixel((0, 0)) == 0
+    assert white.getpixel((0, 0)) == 255
+
+def test_grayscale_image_array_has_equal_channels(gradient_image_path):
+    array = image_as_array(grayscale_image(load_image(gradient_image_path)))
+    assert np.array_equal(array[:, :, 0], array[:, :, 1])
+    assert np.array_equal(array[:, :, 1], array[:, :, 2])
+
+def test_grayscale_image_does_not_change_input(solid_image_path):
+    image = load_image(solid_image_path)
+    grayscale_image(image)
+    assert image.mode == "RGB"
+    assert image.getpixel((0, 0)) == SOLID_COLOR
 
 # Array conversion
 

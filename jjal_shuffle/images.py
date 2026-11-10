@@ -25,6 +25,10 @@ def resize_image(image: Image.Image, size: tuple[int, int]) -> Image.Image:
     # size is (width, height)
     return image.resize(size)
 
+def grayscale_image(image: Image.Image) -> Image.Image:
+    # Single channel, luminance weighted
+    return image.convert("L")
+
 def image_as_array(image: Image.Image) -> np.ndarray:
     # Shape (height, width, 3), uint8
     return np.array(image.convert("RGB"), dtype=np.uint8)
