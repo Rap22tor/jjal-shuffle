@@ -59,3 +59,32 @@ def test_shuffle_help_mentions_aspect_ratio(capsys):
     with pytest.raises(SystemExit):
         main(["shuffle", "--help"])
     assert "aspect ratio" in capsys.readouterr().out
+
+# Shuffle errors
+
+def test_shuffle_missing_source(tmp_path, solid_image_path, capsys):
+    code = main(["shuffle", str(tmp_path / "missing.png"), str(solid_image_path)])
+    err = capsys.readouterr().err
+    assert code != 0
+    assert "not found" in err
+    assert "Traceback" not in err
+
+def test_shuffle_invalid_target(tmp_path, solid_image_path, capsys):
+    fake = tmp_path / "fake.png"
+    fake.write_text("this is not an image")
+    code = main(["shuffle", str(solid_image_path), str(fake)])
+    assert code != 0
+    assert "Not a valid image" in capsys.readouterr().err
+
+def test_shuffle_unsupported_output_extension(tmp_path, solid_image_path, capsys):
+    out = tmp_path / "out.xyz"
+    code = main(["shuffle", str(solid_image_path), str(solid_image_path), "-o", str(out)])
+    assert code != 0
+    assert "Unsupported image extension" in capsys.readouterr().err
+    assert not out.exists()
+
+def test_shuffle_output_directory_missing(tmp_path, solid_image_path, capsys):
+    out = tmp_path / "no-such-dir" / "out.png"
+    code = main(["shuffle", str(solid_image_path), str(solid_image_path), "-o", str(out)])
+    assert code != 0
+    assert capsys.readouterr().err.startswith("shuffle: error:")

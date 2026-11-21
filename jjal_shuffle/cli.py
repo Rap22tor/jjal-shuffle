@@ -1,6 +1,15 @@
 import argparse
 import sys
 
+from jjal_shuffle.images import (
+    array_as_image,
+    image_as_array,
+    load_image,
+    resize_image,
+    save_image,
+)
+from jjal_shuffle.shuffle import shuffle_pixels
+
 __version__ = "0.1.0"
 
 DEFAULT_OUTPUT = "shuffled.png"
@@ -22,10 +31,18 @@ def parse_size(value: str) -> tuple[int, int]:
     return width, height
 
 def run_shuffle(args: argparse.Namespace) -> int:
-    # Stub handler
-    # TODO https://github.com/Rap22tor/jjal-shuffle/issues/6
-    print("shuffle: not implemented yet", file=sys.stderr)
-    return 1
+    # load -> resize -> shuffle -> save
+    try:
+        source = image_as_array(resize_image(load_image(args.source), args.size))
+        target = image_as_array(resize_image(load_image(args.target), args.size))
+        result = shuffle_pixels(source, target)
+        save_image(array_as_image(result), args.output)
+    except (OSError, ValueError) as error:
+        # Short message, no traceback
+        print(f"shuffle: error: {error}", file=sys.stderr)
+        return 1
+    print(f"Saved {args.output}")
+    return 0
 
 def add_shuffle_parser(subparsers) -> None:
     # Register shuffle subcommand
