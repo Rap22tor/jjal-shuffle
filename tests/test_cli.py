@@ -1,8 +1,14 @@
 import argparse
+import subprocess
+import sys
+from pathlib import Path
 
+import numpy as np
 import pytest
+from PIL import Image
 
 from jjal_shuffle.cli import build_parser, main, parse_size
+from jjal_shuffle.images import image_as_array, load_image, resize_image
 
 def test_help_exits_with_zero():
     with pytest.raises(SystemExit) as exif:
@@ -88,3 +94,49 @@ def test_shuffle_output_directory_missing(tmp_path, solid_image_path, capsys):
     code = main(["shuffle", str(solid_image_path), str(solid_image_path), "-o", str(out)])
     assert code != 0
     assert capsys.readouterr().err.startswith("shuffle: error:")
+
+# Shuffle end to end
+
+def pixel_counts(array):
+    # Multiset of RGB pixels, ignoring position
+    values, counts = np.unique(array.reshape(-1, 3), axis=0, return_counts=True)
+    return values.tolist(), counts.tolist()
+
+def test_shuffle_end_to_end(tmp_path, gradient_image_path):
+    # Synthetic target: random noise, different size from the source
+    rng = np.random.default_rng(0)
+    target_path = tmp_path / "target.png"
+    Image.fromarray(rng.integers(0, 256, (10, 20, 3), dtype=np.uint8)).save(target_path)
+    out = tmp_path / "result.png"
+
+    code = main([
+        "shuffle", str(gradient_image_path), str(target_path),
+        "-o", str(out), "--size", "12x6",
+    ])
+
+    assert code == 0
+    assert out.exists()
+    result = load_image(out)
+    assert result.size == (12, 6)
+    expected = image_as_array(resize_image(load_image(gradient_image_path), (12, 6)))
+    assert pixel_counts(image_as_array(result)) == pixel_counts(expected)
+
+def test_shuffle_default_output(tmp_path, monkeypatch, gradient_image_path, capsys):
+    monkeypatch.chdir(tmp_path)
+    code = main(["shuffle", str(gradient_image_path), str(gradient_image_path)])
+    assert code == 0
+    assert load_image(tmp_path / "shuffled.png").size == (256, 256)
+    assert "shuffled.png" in capsys.readouterr().out
+
+def test_shuffle_via_python_m(tmp_path, gradient_image_path):
+    # Runs the real entry point in a subprocess
+    out = tmp_path / "out.png"
+    completed = subprocess.run(
+        [sys.executable, "-m", "jjal_shuffle", "shuffle",
+         str(gradient_image_path), str(gradient_image_path),
+         "-o", str(out), "--size", "8x8"],
+        capture_output=True, text=True,
+        cwd=Path(__file__).resolve().parent.parent,
+    )
+    assert completed.returncode == 0, completed.stderr
+    assert load_image(out).size == (8, 8)
