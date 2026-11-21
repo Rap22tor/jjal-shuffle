@@ -12,6 +12,7 @@ from jjal_shuffle.images import (
     resize_image,
     save_image,
 )
+from jjal_shuffle.shuffle import shuffle_pixels
 
 # Real images committed in the repo
 IMGS_DIR = Path(__file__).resolve().parent.parent / "imgs"
@@ -91,3 +92,17 @@ def test_save_real_image_jpeg(path, tmp_path):
     save_image(original, out_path)
     # JPEG is lossy, so only compare size
     assert load_image(out_path).size == original.size
+
+def test_shuffle_real_images():
+    # Every real image shuffled into every other one
+    size = (64, 48)
+    arrays = [image_as_array(resize_image(load_image(p), size)) for p in IMAGE_PATHS]
+    for source in arrays:
+        for target in arrays:
+            result = shuffle_pixels(source, target)
+            assert result.shape == target.shape
+            # Same multiset of RGB pixels, just rearranged
+            result_pixels = np.unique(result.reshape(-1, 3), axis=0, return_counts=True)
+            source_pixels = np.unique(source.reshape(-1, 3), axis=0, return_counts=True)
+            assert np.array_equal(result_pixels[0], source_pixels[0])
+            assert np.array_equal(result_pixels[1], source_pixels[1])

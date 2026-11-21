@@ -67,3 +67,26 @@ def test_shuffle_mismatched_shapes_raise():
 def test_shuffle_invalid_array_raises(bad):
     with pytest.raises(ValueError, match="height, width, 3"):
         shuffle_pixels(bad, bad)
+
+# Behaviour
+
+def horizontal_gradient(width=16, height=6):
+    # Gray ramp, dark on the left, bright on the right
+    ramp = np.linspace(0, 255, width).astype(np.uint8)
+    return np.repeat(np.repeat(ramp[None, :, None], height, axis=0), 3, axis=2)
+
+def test_shuffle_gradient_into_flipped_gradient():
+    source = horizontal_gradient()
+    target = source[:, ::-1]
+    assert np.array_equal(shuffle_pixels(source, target), target)
+
+def test_shuffle_into_itself_is_identity():
+    image = random_image(3)
+    assert np.array_equal(shuffle_pixels(image, image), image)
+
+def test_shuffle_follows_target_brightness_order():
+    # Brighter target positions never get darker source pixels
+    source, target = random_image(4), random_image(5)
+    result = shuffle_pixels(source, target)
+    order = np.argsort(brightness(target).ravel(), kind="stable")
+    assert np.all(np.diff(brightness(result).ravel()[order]) >= 0)
