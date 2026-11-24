@@ -1,4 +1,6 @@
 import argparse
+import errno
+import os
 import sys
 from pathlib import Path
 
@@ -35,25 +37,51 @@ def parse_size(value: str) -> tuple[int, int]:
 
 def positive_int(value: str) -> int:
     # argparse type, a bad value becomes a usage error
+    error = argparse.ArgumentTypeError(f"expected a positive integer, got {value!r}")
     try:
         number = int(value)
     except ValueError:
-        number = 0
+        raise error from None
     if number < 1:
-        raise argparse.ArgumentTypeError(f"expected a positive integer, got {value!r}")
+        raise error
     return number
+
+def print_to_pipe(text: str) -> bool:
+    # Print text, False if the reader closed stdout early (e.g. `| head`)
+    try:
+        print(text)
+        # Flush now so a closed pipe shows up here, not at exit
+        sys.stdout.flush()
+    except OSError as error:
+        # Closed pipe is EPIPE, but EINVAL on Windows
+        closed = isinstance(error, BrokenPipeError) or (
+            sys.platform == "win32" and error.errno == errno.EINVAL
+        )
+        if not closed:
+            raise
+        # Point stdout at devnull so the flush at exit can't fail again
+        devnull = os.open(os.devnull, os.O_WRONLY)
+        os.dup2(devnull, sys.stdout.fileno())
+        return False
+    return True
 
 def run_ascii(args: argparse.Namespace) -> int:
     try:
         art = image_to_ascii(load_image(args.image), args.width)
         if args.output is None:
-            print(art)
+            if not print_to_pipe(art):
+                # No message for a closed pipe, as the Python docs advise
+                return 1
         else:
+            output = Path(args.output)
+            if output.exists() and output.samefile(args.image):
+                raise ValueError(f"output would overwrite the input image: {output}")
             # Same text as stdout, LF on every platform
-            Path(args.output).write_text(art + "\n", encoding="utf-8", newline="\n")
+            output.write_text(art + "\n", encoding="utf-8", newline="\n")
+            print(f"Saved {output}")
     except (OSError, ValueError) as error:
         # Short message, no traceback
-        print(f"ascii: {error}", file=sys.stderr)
+        print(f"ascii: error: {error}", file=sys.stderr)
         return 1
     return 0
 
@@ -76,6 +104,12 @@ def add_ascii_parser(subparsers) -> None:
     parser = subparsers.add_parser(
         "ascii",
         help="convert an image to ASCII art",
+        description=(
+            "Convert IMAGE to ASCII art, printed to stdout or written to "
+            "--output. The aspect ratio is kept. Characters are chosen for light "
+            "text on a dark background, so on a light background (e.g. most "
+            "text editors) the picture looks inverted."
+        ),
     )
     parser.add_argument("image", metavar="IMAGE", help="path to the input image")
     parser.add_argument(

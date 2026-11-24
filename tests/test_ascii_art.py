@@ -59,11 +59,10 @@ def test_image_to_ascii_uses_luminance_not_one_channel():
     blue = image_to_ascii(Image.new("RGB", (4, 4), (0, 0, 255)), 4)
     assert ASCII_RAMP.index(green[0]) > ASCII_RAMP.index(blue[0])
 
-def test_image_to_ascii_accepts_other_modes():
-    white = {"L": 255, "RGBA": (255, 255, 255, 255)}
-    for mode, color in white.items():
-        art = image_to_ascii(Image.new(mode, (8, 8), color), 4)
-        assert set(art.replace("\n", "")) == {ASCII_RAMP[-1]}
+@pytest.mark.parametrize("mode, white", [("L", 255), ("RGBA", (255, 255, 255, 255))])
+def test_image_to_ascii_accepts_other_modes(mode, white):
+    art = image_to_ascii(Image.new(mode, (8, 8), white), 4)
+    assert set(art.replace("\n", "")) == {ASCII_RAMP[-1]}
 
 def test_image_to_ascii_does_not_change_input():
     image = Image.new("RGB", (8, 8), (200, 100, 50))
@@ -78,3 +77,9 @@ def test_image_to_ascii_does_not_change_input():
 def test_image_to_ascii_invalid_width_raises(width):
     with pytest.raises(ValueError, match="width"):
         image_to_ascii(Image.new("RGB", (4, 4)), width)
+
+@pytest.mark.parametrize("size", [(0, 0), (0, 5), (5, 0)])
+def test_image_to_ascii_empty_image_raises(size):
+    # Pillow allows zero-size images, the height formula would divide by zero
+    with pytest.raises(ValueError, match="no pixels"):
+        image_to_ascii(Image.new("RGB", size), 10)

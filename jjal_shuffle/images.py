@@ -1,7 +1,7 @@
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 # Supported save extensions
 FORMATS = {
@@ -12,10 +12,11 @@ FORMATS = {
 }
 
 def load_image(path: str | Path) -> Image.Image:
-    # Open and force RGB
+    # Open, apply the EXIF rotation (phone photos are often stored sideways)
+    # and force RGB
     try:
         with Image.open(path) as image:
-            return image.convert("RGB")
+            return ImageOps.exif_transpose(image).convert("RGB")
     except FileNotFoundError:
         raise FileNotFoundError(f"Image file not found: {path}") from None
     except UnidentifiedImageError:

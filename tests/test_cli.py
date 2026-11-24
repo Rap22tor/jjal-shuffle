@@ -167,8 +167,14 @@ def test_ascii_output_file_has_same_text_as_stdout(
     assert out_path.read_text(encoding="utf-8") == printed
     # LF only, also on Windows
     assert b"\r" not in out_path.read_bytes()
-    # Nothing printed when writing to a file
-    assert capsys.readouterr().out == ""
+    # Only the confirmation is printed, like the shuffle command
+    assert capsys.readouterr().out == f"Saved {out_path}\n"
+
+def test_ascii_refuses_to_overwrite_input_image(solid_image_path, capsys):
+    assert main(["ascii", str(solid_image_path), "-o", str(solid_image_path)]) != 0
+    assert "overwrite the input image" in capsys.readouterr().err
+    # Input is still a readable image
+    assert load_image(solid_image_path).size == (4, 4)
 
 def test_ascii_missing_file_exits_nonzero(tmp_path, capsys):
     assert main(["ascii", str(tmp_path / "missing.png")]) != 0
@@ -192,7 +198,7 @@ def test_ascii_invalid_image_exits_nonzero(tmp_path, capsys):
 def test_ascii_unwritable_output_exits_nonzero(solid_image_path, tmp_path, capsys):
     out_path = tmp_path / "missing_dir" / "art.txt"
     assert main(["ascii", str(solid_image_path), "-o", str(out_path)]) != 0
-    assert capsys.readouterr().err.startswith("ascii:")
+    assert capsys.readouterr().err.startswith("ascii: error:")
 
 @pytest.mark.parametrize("width", ["0", "-5", "abc", "2.5"])
 def test_ascii_invalid_width_exits_with_usage_error(solid_image_path, width, capsys):
@@ -205,3 +211,36 @@ def test_ascii_requires_image_argument():
     with pytest.raises(SystemExit) as exif:
         main(["ascii"])
     assert exif.value.code != 0
+
+def test_ascii_help_mentions_dark_background(capsys):
+    with pytest.raises(SystemExit):
+        main(["ascii", "--help"])
+    # argparse wraps long lines, so compare with single spaces
+    assert "dark background" in " ".join(capsys.readouterr().out.split())
+
+# ASCII via the real entry point
+
+def run_module(*args: str) -> subprocess.Popen:
+    # Starts `python -m jjal_shuffle` from the repo root
+    return subprocess.Popen(
+        [sys.executable, "-m", "jjal_shuffle", *args],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+        cwd=Path(__file__).resolve().parent.parent,
+    )
+
+def test_ascii_via_python_m(gradient_image_path):
+    process = run_module("ascii", str(gradient_image_path), "--width", "20")
+    out, err = process.communicate(timeout=30)
+    assert process.returncode == 0, err
+    lines = out.splitlines()
+    assert len(lines) == 5
+    assert all(len(line) == 20 for line in lines)
+
+def test_ascii_closed_pipe_exits_quietly(gradient_image_path):
+    # Like `| head`: the reader closes stdout long before the ~1 MB of art is written
+    process = run_module("ascii", str(gradient_image_path), "--width", "2000")
+    process.stdout.close()
+    err = process.stderr.read()
+    process.wait(timeout=30)
+    assert process.returncode == 1
+    assert err == ""

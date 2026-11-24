@@ -30,6 +30,20 @@ def test_load_image_drops_alpha(tmp_path):
     assert image.mode == "RGB"
     assert image.getpixel((0, 0)) == (10, 20, 30)
 
+def test_load_image_applies_exif_rotation(tmp_path):
+    # Stored 4x2 with a red top-left pixel, EXIF orientation 6 means
+    # "rotate 90 degrees clockwise to display"
+    stored = Image.new("RGB", (4, 2), (0, 0, 0))
+    stored.putpixel((0, 0), (255, 0, 0))
+    exif = Image.Exif()
+    exif[0x0112] = 6
+    path = tmp_path / "rotated.png"
+    stored.save(path, exif=exif)
+    image = load_image(path)
+    assert image.size == (2, 4)
+    # Top-left moves to top-right after a clockwise turn
+    assert image.getpixel((1, 0)) == (255, 0, 0)
+
 def test_load_image_missing_file_raises(tmp_path):
     with pytest.raises(FileNotFoundError, match="not found"):
         load_image(tmp_path / "missing.png")
