@@ -11,11 +11,13 @@ CHAR_ASPECT = 0.5
 def image_to_ascii(image: Image.Image, width: int) -> str:
     if width < 1:
         raise ValueError(f"width must be at least 1, got {width}")
-    # Halve the height so the proportions look right in a terminal
+
+    # Resize the image to the desired size and adjust the aspect ratio of the
+    # image to better
     orig_width, orig_height = image.size
     height = max(1, round(orig_height / orig_width * width * CHAR_ASPECT))
     gray = resize_image(grayscale_image(image), (width, height))
-    # One byte per pixel, row by row
+
     pixels = gray.tobytes()
     steps = len(ASCII_RAMP)
     lines = []

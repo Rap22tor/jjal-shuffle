@@ -140,3 +140,68 @@ def test_shuffle_via_python_m(tmp_path, gradient_image_path):
     )
     assert completed.returncode == 0, completed.stderr
     assert load_image(out).size == (8, 8)
+
+# ASCII command
+
+def test_ascii_prints_art_with_requested_width(gradient_image_path, capsys):
+    assert main(["ascii", str(gradient_image_path), "--width", "20"]) == 0
+    lines = capsys.readouterr().out.splitlines()
+    # Gradient image is 16x8, so height is round(8 / 16 * 20 * 0.5)
+    assert len(lines) == 5
+    assert all(len(line) == 20 for line in lines)
+
+def test_ascii_default_width_is_80(solid_image_path, capsys):
+    assert main(["ascii", str(solid_image_path)]) == 0
+    lines = capsys.readouterr().out.splitlines()
+    assert len(lines) == 40
+    assert all(len(line) == 80 for line in lines)
+
+@pytest.mark.parametrize("flag", ["-o", "--output"])
+def test_ascii_output_file_has_same_text_as_stdout(
+    gradient_image_path, tmp_path, capsys, flag
+):
+    main(["ascii", str(gradient_image_path), "--width", "20"])
+    printed = capsys.readouterr().out
+    out_path = tmp_path / "art.txt"
+    assert main(["ascii", str(gradient_image_path), "--width", "20", flag, str(out_path)]) == 0
+    assert out_path.read_text(encoding="utf-8") == printed
+    # LF only, also on Windows
+    assert b"\r" not in out_path.read_bytes()
+    # Nothing printed when writing to a file
+    assert capsys.readouterr().out == ""
+
+def test_ascii_missing_file_exits_nonzero(tmp_path, capsys):
+    assert main(["ascii", str(tmp_path / "missing.png")]) != 0
+    captured = capsys.readouterr()
+    assert "not found" in captured.err
+    assert captured.out == ""
+
+def test_ascii_missing_file_does_not_create_output(tmp_path, capsys):
+    out_path = tmp_path / "art.txt"
+    assert main(["ascii", str(tmp_path / "missing.png"), "-o", str(out_path)]) != 0
+    assert not out_path.exists()
+
+def test_ascii_invalid_image_exits_nonzero(tmp_path, capsys):
+    path = tmp_path / "fake.png"
+    path.write_text("this is not an image")
+    assert main(["ascii", str(path)]) != 0
+    captured = capsys.readouterr()
+    assert "Not a valid image" in captured.err
+    assert captured.out == ""
+
+def test_ascii_unwritable_output_exits_nonzero(solid_image_path, tmp_path, capsys):
+    out_path = tmp_path / "missing_dir" / "art.txt"
+    assert main(["ascii", str(solid_image_path), "-o", str(out_path)]) != 0
+    assert capsys.readouterr().err.startswith("ascii:")
+
+@pytest.mark.parametrize("width", ["0", "-5", "abc", "2.5"])
+def test_ascii_invalid_width_exits_with_usage_error(solid_image_path, width, capsys):
+    with pytest.raises(SystemExit) as exif:
+        main(["ascii", str(solid_image_path), "--width", width])
+    assert exif.value.code == 2
+    assert "positive integer" in capsys.readouterr().err
+
+def test_ascii_requires_image_argument():
+    with pytest.raises(SystemExit) as exif:
+        main(["ascii"])
+    assert exif.value.code != 0
