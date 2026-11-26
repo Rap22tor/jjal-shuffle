@@ -11,6 +11,27 @@ This serves as the base of our application, but since this is a popular project 
 - Image-to-ASCII Art
 - and more...
 
+## Usage
+Run the commands from the project folder with the virtual environment active. `python -m jjal_shuffle --help` lists all commands.
+
+### Shuffle
+Rearranges the pixels of `SOURCE` so the result looks like `TARGET`. Both images are first resized to `--size` (default `256x256`), and the aspect ratio is not kept.
+
+```bash
+python -m jjal_shuffle shuffle imgs/obama.png imgs/kitty.png
+python -m jjal_shuffle shuffle imgs/obama.png imgs/kitty.png -o result.png --size 128x128
+```
+
+The result goes to `shuffled.png` by default. Use `-o` to pick another file; the extension sets the format (`.png`, `.jpg`, `.jpeg` or `.bmp`).
+
+### ASCII
+Converts an image to ASCII art, printed to the terminal or saved as a UTF-8 text file with `-o`. `--width` sets the characters per line (default `80`). The characters are chosen for a dark background, so on a light one the picture looks inverted.
+
+```bash
+python -m jjal_shuffle ascii imgs/kitty.png --width 30
+python -m jjal_shuffle ascii imgs/kitty.png -o art.txt
+```
+
 ## Development setup
 Requires Python 3.10 or newer.
 
